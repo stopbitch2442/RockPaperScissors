@@ -8,7 +8,7 @@ namespace RockPaperScissors.Domain.Game
 {
     public class Game
     {
-        public string GameId { get; }
+        public string GameId { get; set; }
         public Dictionary<string, string> Players { get; }
         public Dictionary<string, string> Turns { get; }
         public int CurrentRound { get; private set; }
@@ -52,8 +52,6 @@ namespace RockPaperScissors.Domain.Game
 
         public void PlayNextRound()
         {
-            // Implement your logic to determine the winner of the round
-            // based on the players' turns
 
             Turns.Clear();
             CurrentRound++;
@@ -76,7 +74,6 @@ namespace RockPaperScissors.Domain.Game
 
         public Dictionary<string, int> GetStatistics()
         {
-            // Implement your logic to retrieve game statistics
             return new Dictionary<string, int>();
         }
     }
