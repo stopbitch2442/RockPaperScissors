@@ -1,7 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using RockPaperScissors.Api.Helpers;
+using RockPaperScissors.Domain.Db;
 using RockPaperScissors.Domain.Game;
+using System.Threading.Tasks;
 
 namespace RockPaperScissorsGame.Controllers
 {
@@ -9,58 +12,58 @@ namespace RockPaperScissorsGame.Controllers
     [Route("[controller]")]
     public class GameController : ControllerBase
     {
-        private readonly Dictionary<string, Game> games = new Dictionary<string, Game>();
+        private readonly RockPaperScissorsDbContext _context;
+        private static readonly Dictionary<string, Game> games = new Dictionary<string, Game>();
 
-        /// <summary>
-        /// Создать игру
-        /// </summary>
-        /// <param name="userName">Введите никнейм</param>
-        /// <returns></returns>
-        [HttpPost("create")]
-        public ActionResult<Game> CreateGame(string userName)
+        public GameController(RockPaperScissorsDbContext context)
         {
-            var gameId = GenerateGameId();
-            var playerCode = GeneratePlayerCode();
-
-            var game = new Game(gameId);
-            game.AddPlayer(playerCode, userName);
-
-            games.Add(gameId, game);
-
-            return Ok(new { GameId = gameId, PlayerCode = playerCode });
+            _context = context;
         }
 
-        /// <summary>
-        /// Присоединиться к игре
-        /// </summary>
-        /// <param name="gameId">Введите код игры</param>
-        /// <param name="userName">Введите никнейм</param>
-        /// <returns></returns>
-        [HttpPost("{gameId}/join")]
-        public ActionResult<string> JoinGame(string gameId, string userName)
+        [HttpPost("create")]
+        public async Task<ActionResult<Game>> CreateGame(string userName)
         {
-            Game game;
-            if (!games.ContainsKey(gameId))
+            if (ModelState.IsValid)
             {
-                game = new Game(gameId);
+                var gameId = GenerateGameId();
+                var playerCode = GeneratePlayerCode();
+
+                var game = new Game(gameId);
+                game.AddPlayer(playerCode, userName);
                 games.Add(gameId, game);
+
+                await _context.Game.AddAsync(game);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { GameId = gameId, PlayerCode = playerCode });
+            }
+            return BadRequest(ModelState);
+        }
+
+        [HttpPost("{gameId}/join")]
+        public async Task<ActionResult<string>> JoinGame(string gameId, string userName)
+        {
+            var game = await _context.Game.FindAsync(gameId);
+            if (game == null)
+            {
+                return NotFound("Игра не найдена");
+            }
+
+            if (game.IsGameComplete())
+            {
+                return BadRequest("Игра уже завершена");
             }
 
             var playerCode = GeneratePlayerCode();
-             game = games[gameId];
             game.AddPlayer(playerCode, userName);
 
-            return Ok($"playerCode: {playerCode}");
+            await _context.SaveChangesAsync();
+
+            return Ok($"player2Code: {playerCode}");
         }
-        /// <summary>
-        /// Сделать ход
-        /// </summary>
-        /// <param name="gameId">Введите Код игры</param>
-        /// <param name="userId">Введите никнейм того, кто ходит</param>
-        /// <param name="turn">Введите(rock,papper или scissors</param>
-        /// <returns></returns>
-        [HttpPost("{gameId}/user/{userId}/{turn}")]
-        public ActionResult<string> MakeTurn(string gameId, string userId, string turn)
+
+        [HttpPost("{gameId}/user/{playerId}/{turn}")]
+        public ActionResult<string> MakeTurn(string gameId, string playerId, string turn)
         {
             if (!games.ContainsKey(gameId))
             {
@@ -69,12 +72,17 @@ namespace RockPaperScissorsGame.Controllers
 
             var game = games[gameId];
 
-            if (!game.HasPlayer(userId))
+            if (!game.HasPlayer(playerId))
             {
                 return NotFound();
             }
 
-            game.AddTurn(userId, turn);
+            if (game.IsGameComplete())
+            {
+                return BadRequest("Игра уже завершена");
+            }
+
+            game.AddTurn(playerId, turn);
 
             if (game.IsRoundComplete())
             {
@@ -83,16 +91,14 @@ namespace RockPaperScissorsGame.Controllers
 
             if (game.IsGameComplete())
             {
-                game.EndGame();
+                return BadRequest("Игра закончилась");
             }
+
+            _context.SaveChanges();
 
             return Ok();
         }
-        /// <summary>
-        /// Запросить статистику по игре
-        /// </summary>
-        /// <param name="gameId">Введите Код игры</param>
-        /// <returns></returns>
+
         [HttpGet("{gameId}/stat")]
         public ActionResult<Dictionary<string, int>> GetStatistics(string gameId)
         {
@@ -115,7 +121,6 @@ namespace RockPaperScissorsGame.Controllers
         {
             string gameId = GenerateCodeSixChar.GenerateCode();
             return gameId;
-
         }
 
         private string GeneratePlayerCode()

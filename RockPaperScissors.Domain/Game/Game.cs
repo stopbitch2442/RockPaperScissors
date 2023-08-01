@@ -52,11 +52,13 @@ namespace RockPaperScissors.Domain.Game
 
         public void PlayNextRound()
         {
+            var roundWinner = GetRoundWinner();
+            UpdateStatistics(roundWinner);
 
             Turns.Clear();
             CurrentRound++;
 
-            if (CurrentRound > 5)
+            if (IsGameComplete())
             {
                 IsComplete = true;
             }
@@ -64,17 +66,81 @@ namespace RockPaperScissors.Domain.Game
 
         public bool IsGameComplete()
         {
-            return IsComplete;
+            return CurrentRound > 5;
         }
 
-        public void EndGame()
-        {
-            if (IsGameComplete()) { }
-        }
 
         public Dictionary<string, int> GetStatistics()
         {
-            return new Dictionary<string, int>();
+            var statistics = new Dictionary<string, int>();
+            foreach (var player in Players)
+            {
+                statistics.Add(player.Value, 0);
+            }
+
+            foreach (var turn in Turns.Values)
+            {
+                if (statistics.ContainsKey(turn))
+                {
+                    statistics[turn]++;
+                }
+            }
+
+            return statistics;
+        }
+
+        private string GetRoundWinner()
+        {
+            var roundTurns = new List<string>(Turns.Values);
+            var uniqueTurns = roundTurns.Distinct().ToList();
+
+            if (uniqueTurns.Count == 1)
+            {
+                return null;
+            }
+
+            if (uniqueTurns.Count == 3)
+            {
+                return null;
+            }
+
+            if (uniqueTurns.Count == 2)
+            {
+                string winningTurn = null;
+
+                if (uniqueTurns.Contains("rock") && uniqueTurns.Contains("paper"))
+                {
+                    winningTurn = "paper";
+                }
+                else if (uniqueTurns.Contains("rock") && uniqueTurns.Contains("scissors"))
+                {
+                    winningTurn = "rock";
+                }
+                else if (uniqueTurns.Contains("paper") && uniqueTurns.Contains("scissors"))
+                {
+                    winningTurn = "scissors";
+                }
+
+                return winningTurn;
+            }
+
+            return null;
+        }
+
+        private void UpdateStatistics(string roundWinner)
+        {
+            if (string.IsNullOrEmpty(roundWinner))
+            {
+                return;
+            }
+
+            foreach (var player in Players)
+            {
+                if (Turns.ContainsKey(player.Key) && Turns[player.Key] == roundWinner)
+                {
+
+                }
+            }
         }
     }
 }
