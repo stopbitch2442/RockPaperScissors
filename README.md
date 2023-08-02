@@ -7,3 +7,4 @@
 Важная информация:
 Для корректного запуска приложения необходима бд, в случае если не создастся автоматически, необходимо создать вручную
 "Host=localhost;Port=5432;Database=RockPapperScissors;Username=postgres;Password=wasdwasd543210"
+В случае возникновения ошибок telegram: @neofall <З
