@@ -49,6 +49,19 @@ builder.Services.AddDbContext<RockPaperScissorsDbContext>(options =>
 });
 
 var app = builder.Build();
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var serviceProvider = scope.ServiceProvider;
+        var dbContext = serviceProvider.GetRequiredService<RockPaperScissorsDbContext>();
+        dbContext.Database.EnsureCreated();
+    }
+}
+catch
+{
+    Console.WriteLine("Ѕаза не создалась автоматически, заполни ручками");
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
